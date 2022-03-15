@@ -1,0 +1,6 @@
+[submodule "spack"]
+	path = spack
+	url = https://github.com/spack/spack
+[submodule "wct-spack"]
+	path = wct-spack
+	url = git@github.com:WireCell/wire-cell-spack.git

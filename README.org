@@ -1,1 +1,107 @@
+#+title: Containers build with Spack for Wire-Cell
 
+* What is here
+
+This package builds containers for running and developing the
+[[https://github.com/wirecell/wire-cell-toolkit][Wire-Cell Toolkit]] (WCT) software.  It uses [[https://github.com/WireCell/wire-cell-spack/][WCT Spack support]] to build
+container contents from source.
+
+* I want to
+
+Brief instructions describe how to use this package.
+
+** Run a Docker container
+
+#+begin_example
+  $ docker pull brettviren:wct-core
+  $ docker run -it wct-core
+  root@<hash>:~# wire-cell --help
+#+end_example
+
+See [[Details]] for understanding the names to use.
+
+** Produce and run Singularity container
+
+** Remake a container
+
+#+begin_example
+  $ docker build -t <output-name> -f dockerfiles/<input-name>.df
+#+end_example
+
+** Run WCT
+
+** Develop WCT
+
+** Build my own Spack packages unrelated to WCT
+
+
+* Details
+
+** Layers
+
+The containers are built in major groups of layers starting with a
+Debian base and each with a Dockerfile under [[./dockerfiles/]].
+
+*** ~spack-base~ 
+
+This adds some Debian packages and adds Spack at the ~git submodule~
+version [[./spack][pointed to]] in this repo.  In the image, Spack files are placed
+under ~/opt/spack~.  This image could be used as a base for others built
+with Spack.
+
+#+begin_example
+  $ docker build -t spack-base:0.17.1 -f dockerfiles/spack-base.df .
+  $ docker run -it spack-base:0.17.1
+  root@909ec8b19b45:~# spack list wire-cell-toolkit
+  ==> 0 packages.
+#+end_example
+
+*** ~wct-base~  
+
+This adds WCT Spack ~package.py~'s and builds the packages needed for
+WCT "core" including default options.  This could be used as a base
+for developing WCT core packages.
+
+#+begin_example
+  $ docker build -t wct-base:0.18.0 -f dockerfiles/wct-base.df .
+  root@33c1283fb71a:~# spack load go-jsonnet
+  root@33c1283fb71a:~# jsonnet --version
+  Jsonnet commandline interpreter (Go implementation) v0.18.0
+#+end_example
+
+*** ~wct-core~
+
+This builds a WCT release via Spack.  It may be used to run core WCT
+jobs or as a basis for WCT core development.
+
+#+begin_example
+  $ docker build -t wct-core:0.18.0 -f dockerfiles/wct-core.df .
+
+#+end_example
+
+*** ~wct-extra~
+
+This builds the full set of non-default optional WCT dependencies
+using Spack but does not build WCT itself.
+
+*** ~wct-full~ 
+
+Builds WCT with all options.
+
+
+
+*** DI
+
+Breaking up the layers as above helps to produce images which may have
+multiple purposes and ease (re)build issue during their definition.
+
+However, a more direct and monolithic construction can be created with
+a ~Dockerfile~ like:
+
+#+begin_example
+FROM spack-base
+RUN spack install wire-cell-toolkit@0.18.0+root+hdf+zmq+kokkos
+#+end_example
+
+This example will build the "full" WCT as well as all dependencies in
+a single, if rather long, construction.
