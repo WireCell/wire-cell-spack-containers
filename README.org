@@ -1,4 +1,4 @@
-#+title: Containers build with Spack for Wire-Cell
+#+title: Containers with Spack for Wire-Cell
 
 * What is here
 
@@ -22,6 +22,19 @@ See [[Details]] for understanding the names to use.
 
 ** Produce and run Singularity container
 
+Singularity images or file based and running a container "sees" you
+home directory.
+
+#+begin_example
+  $ singularity build spack-base.sif docker-daemon://spack-base:0.17.1
+  $ ls -lh spack-base.sif
+  -rwxr-xr-x 1 bv bv 265M Mar 15 16:32 spack-base.sif
+  $ singularity run --env SPACK_ROOT=/opt/spack spack-base.sif interactive-shell
+  $ spack -h
+#+end_example
+
+*** TODO Fix loss of ~SPACK_ROOT~ setting 
+
 ** Remake a container
 
 #+begin_example
@@ -31,8 +44,6 @@ See [[Details]] for understanding the names to use.
 ** Run WCT
 
 ** Develop WCT
-
-** Build my own Spack packages unrelated to WCT
 
 
 * Details
@@ -64,6 +75,7 @@ for developing WCT core packages.
 
 #+begin_example
   $ docker build -t wct-base:0.18.0 -f dockerfiles/wct-base.df .
+  $ docker run -it wct-base:0.18.0 
   root@33c1283fb71a:~# spack load go-jsonnet
   root@33c1283fb71a:~# jsonnet --version
   Jsonnet commandline interpreter (Go implementation) v0.18.0
@@ -76,7 +88,27 @@ jobs or as a basis for WCT core development.
 
 #+begin_example
   $ docker build -t wct-core:0.18.0 -f dockerfiles/wct-core.df .
-
+  $ docker run -it wct-core:0.18.0
+  root@bf8cc5fd7982:~# spack load wire-cell-toolkit
+  root@bf8cc5fd7982:~# wire-cell --help
+  Options:
+    -h [ --help ]         wire-cell [options] [arguments]
+    -l [ --logsink ] arg  set log sink as <filename> or 'stdout' or 'stderr', a 
+                          log level for the sink may be given by appending 
+                          ':<level>'
+    -L [ --loglevel ] arg set lowest log level for a log in form 'name:level' or 
+                          just give 'level' value for all (level one of: 
+                          critical,error,warn,info,debug,trace)
+    -a [ --app ] arg      application component to invoke
+    -c [ --config ] arg   provide a configuration file
+    -p [ --plugin ] arg   specify a plugin as name[:lib]
+    -V [ --ext-str ] arg  specify a Jsonnet external variable=<string>
+    -C [ --ext-code ] arg specify a Jsonnet external variable=<code>
+    -A [ --tla-str ] arg  specify a Jsonnet top level arguments variable=<string>
+    --tla-code arg        specify a Jsonnet top level arguments variable=<code>
+    -P [ --path ] arg     add to JSON/Jsonnet search path
+    -t [ --threads ] arg  limit number of threads used
+    -v [ --version ]      print the compiled version to stdout
 #+end_example
 
 *** ~wct-extra~
@@ -90,7 +122,7 @@ Builds WCT with all options.
 
 
 
-*** DI
+*** DIY
 
 Breaking up the layers as above helps to produce images which may have
 multiple purposes and ease (re)build issue during their definition.

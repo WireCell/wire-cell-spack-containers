@@ -1,0 +1,7 @@
+FROM wct-base:0.18.0
+
+# bodge
+# COPY wct-spack/packages/wire-cell-toolkit/package.py \
+#      /opt/wct-spack/packages/wire-cell-toolkit/package.py
+
+RUN spack install wire-cell-toolkit@0.18.0
