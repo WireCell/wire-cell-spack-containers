@@ -1,0 +1,6 @@
+FROM wct-core:0.18.0
+
+# need/want to explicitly turn off mpi
+RUN spack install h5cpp~mpi^hdf5~mpi
+RUN spack install cuda
+

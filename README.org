@@ -2,13 +2,119 @@
 
 * What is here
 
-This package builds containers for running and developing the
-[[https://github.com/wirecell/wire-cell-toolkit][Wire-Cell Toolkit]] (WCT) software.  It uses [[https://github.com/WireCell/wire-cell-spack/][WCT Spack support]] to build
-container contents from source.
+This package collects various ways to build and use containers with
+Spack to build or run [[https://github.com/wirecell/wire-cell-toolkit][Wire-Cell Toolkit]] (WCT) software.
 
-* I want to
+* I want to...
 
-Brief instructions describe how to use this package.
+Here gives a menu of how to achieve various objectives.  
+
+** ...use Spack on the native host
+
+#+begin_example
+sudo mkdir /srv/spack
+sudo chown $USER:$USER /srv/spack
+git clone https://github.com/spack/spack /srv/spack/local
+bash --rcfile /srv/spack/local/share/spack/setup-env.sh
+spack -h
+#+end_example
+
+Anticipating some future goals, [[https://spack-tutorial.readthedocs.io/en/latest/tutorial_configuration.html?highlight=padded_length#high-level-config][do some configuration]]
+
+#+begin_example
+spack config --scope defaults edit config
+#+end_example
+
+Consider:
+
+- ~padded_length:128~  :: to give room in binaries for relocatable paths.
+- ~install_tree:root:~ :: change to install outside of the git clone.
+- build_stage: :: change if default temp storage areas are too small.
+
+** ...share binary packages
+
+If using Spack on multiple hosts, it's nice share the spoils of a
+build with a [[https://spack-tutorial.readthedocs.io/en/latest/tutorial_binary_cache.html][source mirror and binary cache]].  This takes some
+finagling with GPG keys and an extra command after a local build to
+populate the buildcache but will help you or others doing subsequent,
+identical builds.
+
+#+begin_example
+spack mirror create -d /srv/spack/mirror xz
+spack mirror add local /srv/spack/mirror
+#+end_example
+
+See tutorial to create and add signing keys.  
+
+#+begin_example
+spack buildcache create --allow-root --force -d /srv/spack/mirror --only=package xz
+#+end_example
+
+To do this wholesale, see the for loop on ~spack find~ given in the
+tutorial linked above.
+
+A remote server is out of scope of the tutorial but easy enough.
+Here's an example assuming Debian:
+
+#+begin_example
+ssh server
+sudo mkdir -p /var/www/html/spack/mirror
+sudo chown $USER:$USER /var/www/html/spack/mirror
+exit
+rsync -av /srv/spack/mirror/ server:/var/www/html/spack/mirror/
+spack mirror add server http://server/spack/mirror
+spack mirror rm local # to check the remote server is working
+#+end_example
+
+Other users can use this as a source mirror with no hassle.  To use
+the ~buildcache~ requires the public key which is in the server at the
+URL path: ~/spack/mirror/build_cache/_pgp/*.pub~.  See the tutorial for
+details.
+
+
+** ...use a different OS
+
+You may want to use an OS other than your native one.  The example
+here is to build a minimal Debian 11 (bullseye) Docker image and
+extract that to a Singularity image.  We then run the native Spack
+through the container to populate with Debian 11 builds.
+
+This uses [[./dockerfiles/debian-prespack.df]] from this repository.
+
+#+begin_example
+docker build -t debian-prespack:11.2 -f dockerfiles/debian-prespack.df .
+singularity build /srv/spack/debian-bullseye.sif docker-daemon://debian-prespack:11.2
+
+mkdir /srv/debian-bullseys-home
+singularity exec \
+  --writable-tmpfs \
+  --bind /srv/spack/debian-bullseye-home:/home/bv \
+  --bind /srv/spack /srv/spack/debian-bullseye.sif \
+  bash --rcfile /srv/spack/local/share/spack/setup-env.sh
+
+Singularity> spack install xz
+Singularity> spack buildcache create --allow-root --force -d /srv/spack/mirror --only=package xz
+
+#+end_example
+
+The empty home directory is mounted to avoid polluting the container
+with the native OS's =~/.spack=.  
+
+** ...build core WCT
+
+This needs ~wire-cell-spack~ and can be run in the native OS or in the
+Singularity container.
+
+#+begin_example
+mkdir /srv/spack/repos
+git clone https://github.com/WireCell/wire-cell-spack.git /srv/spack/repos/wct-spack
+spack repo add /srv/spack/repos/wct-spack
+spack info wire-cell-toolkit
+spack install wire-cell-toolkit
+#+end_example
+
+
+* ETC
 
 ** Run a Docker container
 
@@ -114,12 +220,18 @@ jobs or as a basis for WCT core development.
 *** ~wct-extra~
 
 This builds the full set of non-default optional WCT dependencies
-using Spack but does not build WCT itself.
+using Spack but does not build WCT itself.  It includes CUDA, HDF5,
+ZeroMQ, ROOT.
 
 *** ~wct-full~ 
 
 Builds WCT with all options.
 
+*** ~wct-pps~
+
+This builds externals WCT extensions developed as part of the
+experimental HEP-CCE/PPS work.  It includes Kokkos with various
+backends.
 
 
 *** DIY
